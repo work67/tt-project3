@@ -14,6 +14,9 @@ settlementsRouter.post('/', async (req, res) => {
   const fromUserId = await requireUserId(body.fromUserId, 'fromUserId');
   const toUserId = await requireUserId(body.toUserId, 'toUserId');
   if (fromUserId === toUserId) throw new HttpError(400, "Can't pay yourself");
+  if (req.user!.id !== fromUserId && req.user!.id !== toUserId) {
+    throw new HttpError(403, 'You can only record payments you made or received');
+  }
 
   const settlement = await settlements.createSettlement(
     fromUserId,
@@ -21,6 +24,12 @@ settlementsRouter.post('/', async (req, res) => {
     requireCents(body.amountCents, 'amountCents'),
     req.user!.id,
   );
+  if (!settlement) {
+    throw new HttpError(
+      409,
+      "That's more than is owed right now. It may already have been recorded; refresh and check.",
+    );
+  }
   res.status(201).json(settlement);
 });
 

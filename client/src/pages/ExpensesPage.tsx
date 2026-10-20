@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { expensesApi } from '../api';
 import { useLoader } from '../hooks/useLoader';
+import { useBusy } from '../hooks/useBusy';
 import { useTrip } from '../lib/trip';
 import { formatCents, parseDollars } from '../lib/money';
 import PersonSelect from '../components/PersonSelect';
@@ -15,6 +16,7 @@ export default function ExpensesPage() {
     () => new Set(users.map((u) => u.id)),
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const { busy, guard } = useBusy();
 
   function toggle(id: number) {
     setParticipants((prev) => {
@@ -30,20 +32,22 @@ export default function ExpensesPage() {
     const amountCents = parseDollars(amount);
     if (amountCents === null) return setFormError('Enter an amount like 45 or 45.50');
     if (participants.size === 0) return setFormError('Pick at least one person to split with');
-    try {
-      await expensesApi.create({
-        description,
-        amountCents,
-        paidBy,
-        participantIds: [...participants],
-      });
-      setFormError(null);
-      setDescription('');
-      setAmount('');
-      await reload();
-    } catch (err) {
-      setFormError((err as Error).message);
-    }
+    await guard(async () => {
+      try {
+        await expensesApi.create({
+          description,
+          amountCents,
+          paidBy,
+          participantIds: [...participants],
+        });
+        setFormError(null);
+        setDescription('');
+        setAmount('');
+        await reload();
+      } catch (err) {
+        setFormError((err as Error).message);
+      }
+    });
   }
 
   async function handleDelete(id: number, label: string) {
@@ -114,8 +118,8 @@ export default function ExpensesPage() {
           </p>
         )}
         {formError && <p className="error">{formError}</p>}
-        <button type="submit" className="primary">
-          Add expense
+        <button type="submit" className="primary" disabled={busy}>
+          {busy ? 'Saving…' : 'Add expense'}
         </button>
       </form>
 
