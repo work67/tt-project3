@@ -309,3 +309,13 @@ legend {
     max-width: none;
   }
 }
+
+/* Change password */
+.password-form {
+  max-width: 360px;
+}
+.password-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

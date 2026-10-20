@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { authApi } from '../api';
-import type { User } from '../types/models';
+import type { Me } from '../types/models';
 
-export default function LoginPage({ onLogin }: { onLogin: (user: User) => void }) {
+export default function LoginPage({ onLogin }: { onLogin: (user: Me) => void }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);

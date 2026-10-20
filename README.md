@@ -28,6 +28,7 @@ npm run dev                  # client on http://localhost:5173, server on :3001
 On first run the server creates `server/data/trip.db` and seeds the ten accounts:
 `alex, priya, ben, mei, diego, sara, kofi, hana, liam, zoe`, all with the password from
 `SEED_PASSWORD` in `server/.env` (default `password`), plus starter to-dos and expenses.
+Everyone has to choose their own password the first time they log in.
 
 The seed only runs when the database is empty, not on every `npm run dev`. To start over
 with fresh seed data, or to apply a changed `SEED_PASSWORD`, stop the dev server and run
@@ -37,6 +38,8 @@ You'll see an `ExperimentalWarning: SQLite is an experimental feature` line on s
 
 ## Features
 
+- **Accounts**: everyone starts on the shared seed password and must change it on first
+  login; "Change password" in the header changes it later and logs out your other devices.
 - **To-dos**: add, assign to anyone, set a due date, tick off; filter by open / mine / all.
 - **Expenses**: who paid, how much, and which of the ten it's split between (equal split;
   leftover cents go one per person so shares always add up).
@@ -101,6 +104,10 @@ Notes:
 - To wipe the deployed data and reseed (e.g. after changing `SEED_PASSWORD`): GitHub →
   **Actions → Deploy to Cloudflare → Run workflow**, tick **Reseed database**. This deletes
   all live data; the first request after the deploy recreates the ten accounts.
+- Login security: 5 wrong passwords for a username, or 20 from one IP address, within
+  15 minutes locks that username / address out for 15 minutes (HTTP 429). Sessions expire
+  after 7 days without use. Locks live in the `login_attempts` table; to lift one early:
+  `npx wrangler d1 execute DB --remote --command "DELETE FROM login_attempts"` from `server/`.
 - Logins hash passwords with scrypt, which takes a few tens of ms of CPU. The Workers Free
   plan allows 10 ms per request but tolerates occasional spikes; if logins start failing with
   "exceeded CPU", move to Workers Paid.
@@ -131,7 +138,8 @@ server/src/
 
 ## API
 
-All routes except `/api/auth/login` and `/api/health` need the session cookie.
+All routes except `/api/auth/login` and `/api/health` need the session cookie. Until an
+account has changed its seed password, only the `/api/auth/*` routes work (others return 403).
 
 ```
 POST /api/auth/login  POST /api/auth/logout  GET /api/auth/me  POST /api/auth/password

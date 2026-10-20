@@ -5,6 +5,10 @@ export interface User {
   displayName: string;
 }
 
+export interface Me extends User {
+  mustChangePassword: boolean;
+}
+
 export interface Todo {
   id: number;
   title: string;

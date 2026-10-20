@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { authApi, usersApi } from './api';
 import { TripContext } from './lib/trip';
 import LoginPage from './pages/LoginPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import TodosPage from './pages/TodosPage';
 import ExpensesPage from './pages/ExpensesPage';
 import BalancesPage from './pages/BalancesPage';
-import type { User } from './types/models';
+import type { Me, User } from './types/models';
 
 const TABS = [
   { id: 'todos', label: 'To-dos', Page: TodosPage },
@@ -16,17 +17,19 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id'];
 
 export default function App() {
-  const [me, setMe] = useState<User | null | undefined>(undefined); // undefined = still checking
+  const [me, setMe] = useState<Me | null | undefined>(undefined); // undefined = still checking
   const [users, setUsers] = useState<User[]>([]);
   const [tab, setTab] = useState<TabId>('todos');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const ready = !!me && !me.mustChangePassword; // the API refuses everything else until then
 
   useEffect(() => {
     authApi.me().then(setMe, () => setMe(null));
   }, []);
 
   useEffect(() => {
-    if (me) usersApi.list().then(setUsers, () => setUsers([]));
-  }, [me]);
+    if (ready) usersApi.list().then(setUsers, () => setUsers([]));
+  }, [ready]);
 
   const trip = useMemo(() => {
     if (!me) return null;
@@ -34,15 +37,28 @@ export default function App() {
     return { me, users, nameOf: (id: number | null) => (id === null ? '—' : (names.get(id) ?? '?')) };
   }, [me, users]);
 
-  if (me === undefined) return null;
-  if (me === null) return <LoginPage onLogin={setMe} />;
-  if (!trip || users.length === 0) return <p className="container muted">Loading…</p>;
-
   async function logout() {
     await authApi.logout();
     setMe(null);
     setTab('todos');
+    setChangingPassword(false);
   }
+
+  function passwordChanged(updated: Me) {
+    setMe(updated);
+    setChangingPassword(false);
+  }
+
+  if (me === undefined) return null;
+  if (me === null) return <LoginPage onLogin={setMe} />;
+  if (me.mustChangePassword) {
+    return (
+      <main className="login">
+        <ChangePasswordPage forced onChanged={passwordChanged} onCancel={logout} />
+      </main>
+    );
+  }
+  if (!trip || users.length === 0) return <p className="container muted">Loading…</p>;
 
   const { Page } = TABS.find((t) => t.id === tab)!;
 
@@ -53,6 +69,9 @@ export default function App() {
           <strong>Bali Trip 🌴</strong>
           <span className="row">
             <span className="muted">Hi, {me.displayName}</span>
+            <button className="link" onClick={() => setChangingPassword(true)}>
+              Change password
+            </button>
             <button className="link" onClick={logout}>
               Log out
             </button>
@@ -63,9 +82,12 @@ export default function App() {
             <button
               key={t.id}
               role="tab"
-              aria-selected={tab === t.id}
-              className={tab === t.id ? 'active' : ''}
-              onClick={() => setTab(t.id)}
+              aria-selected={tab === t.id && !changingPassword}
+              className={tab === t.id && !changingPassword ? 'active' : ''}
+              onClick={() => {
+                setTab(t.id);
+                setChangingPassword(false);
+              }}
             >
               {t.label}
             </button>
@@ -73,7 +95,15 @@ export default function App() {
         </nav>
       </header>
       <main className="container">
-        <Page />
+        {changingPassword ? (
+          <ChangePasswordPage
+            forced={false}
+            onChanged={passwordChanged}
+            onCancel={() => setChangingPassword(false)}
+          />
+        ) : (
+          <Page />
+        )}
       </main>
     </TripContext.Provider>
   );

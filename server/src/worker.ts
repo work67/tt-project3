@@ -9,6 +9,6 @@ import { createApp } from './app.js';
 setDb(createD1Database((bindings as { DB: D1Database }).DB));
 
 const PORT = 8080; // internal only: httpServerHandler routes Worker requests to this "port"
-createApp({ seedOnFirstRequest: true }).listen(PORT);
+createApp({ seedOnFirstRequest: true, trustCfConnectingIp: true }).listen(PORT);
 
 export default httpServerHandler({ port: PORT });

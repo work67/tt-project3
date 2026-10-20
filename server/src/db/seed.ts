@@ -76,7 +76,9 @@ export async function seedIfEmpty(): Promise<boolean> {
 
   PEOPLE.forEach(([username, name], i) => {
     statements.push({
-      sql: 'INSERT INTO users (id, username, display_name, password_hash) VALUES (?, ?, ?, ?)',
+      sql:
+        'INSERT INTO users (id, username, display_name, password_hash, must_change_password) ' +
+        'VALUES (?, ?, ?, ?, 1)',
       params: [i + 1, username, name, passwordHash],
     });
   });
