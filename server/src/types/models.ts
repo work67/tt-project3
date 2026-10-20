@@ -4,6 +4,12 @@ export interface User {
   displayName: string;
 }
 
+/** The logged-in user, as returned by login and /api/auth/me. */
+export interface Me extends User {
+  /** Still on the shared seed password: must pick a new one before using the app. */
+  mustChangePassword: boolean;
+}
+
 export interface Todo {
   id: number;
   title: string;

@@ -1,13 +1,14 @@
 import { api } from './client';
-import type { Balances, Expense, Settlement, Todo, User } from '../types/models';
+import type { Balances, Expense, Me, Settlement, Todo, User } from '../types/models';
 
 export const authApi = {
-  me: () => api.get<User>('/auth/me'),
+  me: () => api.get<Me>('/auth/me'),
   login: (username: string, password: string) =>
-    api.post<User>('/auth/login', { username, password }),
+    api.post<Me>('/auth/login', { username, password }),
   logout: () => api.post<void>('/auth/logout'),
+  /** Logs out every other session; this one stays logged in. */
   changePassword: (currentPassword: string, newPassword: string) =>
-    api.post<void>('/auth/password', { currentPassword, newPassword }),
+    api.post<Me>('/auth/password', { currentPassword, newPassword }),
 };
 
 export const usersApi = {

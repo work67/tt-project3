@@ -70,7 +70,7 @@ jobs:
         run: >-
           npx wrangler d1 execute DB --remote --command
           "DELETE FROM sessions; DELETE FROM settlements; DELETE FROM expense_shares;
-          DELETE FROM expenses; DELETE FROM todos; DELETE FROM users;"
+          DELETE FROM expenses; DELETE FROM todos; DELETE FROM users; DELETE FROM login_attempts;"
 
       # SEED_PASSWORD (optional GitHub secret) is uploaded with this version, so a fresh
       # database is never seeded before the password exists. Omitted = keep the existing one.

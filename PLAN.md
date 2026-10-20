@@ -29,6 +29,7 @@ only among the people who took part.
 ## Features
 
 1. **Login**: each of the ten people has an account (seeded). Username and password, session cookie.
+   Everyone must pick their own password on first login; failed logins are rate-limited.
 2. **To-dos**: title, optional notes, optional assignee, optional due date, done/undone.
    Anyone can add, assign, complete, or delete.
 3. **Expenses**: description, amount, who paid, and who it's split between (equal split,
@@ -47,18 +48,19 @@ only among the people who took part.
 ## Data model
 
 ```
-users(id, username, display_name, password_hash)
+users(id, username, display_name, password_hash, must_change_password)
 sessions(token, user_id, expires_at)
 todos(id, title, notes, assignee_id?, due_date?, done, created_by, created_at)
 expenses(id, description, amount_cents, paid_by, created_by, created_at)
 expense_shares(expense_id, user_id, share_cents)
 settlements(id, from_user_id, to_user_id, amount_cents, created_at)
+login_attempts(key, failures, window_start, locked_until)
 ```
 
 ## API
 
 ```
-POST /api/auth/login   POST /api/auth/logout   GET /api/auth/me
+POST /api/auth/login   POST /api/auth/logout   GET /api/auth/me   POST /api/auth/password
 GET  /api/users
 GET/POST /api/todos    PATCH/DELETE /api/todos/:id
 GET/POST /api/expenses DELETE /api/expenses/:id

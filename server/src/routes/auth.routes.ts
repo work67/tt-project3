@@ -1,25 +1,43 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import * as auth from '../services/auth.service.js';
-import { requireAuth, SESSION_COOKIE } from '../middleware/requireAuth.js';
+import * as loginLimit from '../services/loginLimit.service.js';
+import { requireAuth, setSessionCookie, SESSION_COOKIE } from '../middleware/requireAuth.js';
 import { HttpError } from '../middleware/errorHandler.js';
-import { env } from '../config/env.js';
 
 export const authRouter = Router();
+
+/** On Workers, Cloudflare sets CF-Connecting-IP; locally there's no proxy in front. */
+function clientIp(req: Request): string {
+  const cfIp = req.app.get('trustCfConnectingIp') ? req.get('cf-connecting-ip') : undefined;
+  return cfIp ?? req.ip ?? 'unknown';
+}
 
 authRouter.post('/login', async (req, res) => {
   const { username, password } = req.body ?? {};
   if (typeof username !== 'string' || typeof password !== 'string') {
     throw new HttpError(400, 'Username and password are required');
   }
-  const result = await auth.login(username.trim(), password);
-  if (!result) throw new HttpError(401, 'Wrong username or password');
+  const name = username.trim();
+  const ip = clientIp(req);
 
-  res.cookie(SESSION_COOKIE, result.token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: env.nodeEnv === 'production',
-    maxAge: auth.SESSION_TTL_MS,
-  });
+  const retryAfter = await loginLimit.loginRetryAfter(name, ip);
+  if (retryAfter > 0) {
+    res.set('Retry-After', String(retryAfter));
+    const minutes = Math.ceil(retryAfter / 60);
+    throw new HttpError(
+      429,
+      `Too many failed logins. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`,
+    );
+  }
+
+  const result = await auth.login(name, password);
+  if (!result) {
+    await loginLimit.recordLoginFailure(name, ip);
+    throw new HttpError(401, 'Wrong username or password');
+  }
+  await loginLimit.clearLoginFailures(name);
+
+  setSessionCookie(res, result.token);
   res.json(result.user);
 });
 
@@ -36,11 +54,16 @@ authRouter.get('/me', requireAuth, (req, res) => {
 
 authRouter.post('/password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body ?? {};
-  if (typeof newPassword !== 'string' || newPassword.length < 6) {
-    throw new HttpError(400, 'New password must be at least 6 characters');
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    throw new HttpError(400, 'New password must be at least 8 characters');
   }
-  if (!(await auth.changePassword(req.user!.id, String(currentPassword ?? ''), newPassword))) {
-    throw new HttpError(401, 'Current password is wrong');
+  if (newPassword === currentPassword) {
+    throw new HttpError(400, 'New password must be different from the current one');
   }
-  res.status(204).end();
+  const token = await auth.changePassword(req.user!.id, String(currentPassword ?? ''), newPassword);
+  if (!token) throw new HttpError(401, 'Current password is wrong');
+
+  // Every other session was just logged out; this one continues on a fresh token.
+  setSessionCookie(res, token);
+  res.json({ ...req.user!, mustChangePassword: false });
 });

@@ -1,0 +1,7 @@
+# Response headers for the built React app on Cloudflare Workers static assets.
+# (API responses get theirs from server/src/app.ts.)
+/*
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
