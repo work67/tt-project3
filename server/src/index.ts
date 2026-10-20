@@ -1,5 +1,8 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
+import { seedIfEmpty } from './db/seed.js';
+
+seedIfEmpty();
 
 const app = createApp();
 
