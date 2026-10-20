@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { expensesApi } from '../api';
+import { useAction } from '../hooks/useAction';
 import { useLoader } from '../hooks/useLoader';
 import { useTrip } from '../lib/trip';
 import { formatCents, parseDollars } from '../lib/money';
@@ -14,7 +15,7 @@ export default function ExpensesPage() {
   const [participants, setParticipants] = useState<Set<number>>(
     () => new Set(users.map((u) => u.id)),
   );
-  const [formError, setFormError] = useState<string | null>(null);
+  const { run, busy, error: actionError, setError: setActionError } = useAction(reload);
 
   function toggle(id: number) {
     setParticipants((prev) => {
@@ -28,32 +29,19 @@ export default function ExpensesPage() {
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
     const amountCents = parseDollars(amount);
-    if (amountCents === null) return setFormError('Enter an amount like 45 or 45.50');
-    if (participants.size === 0) return setFormError('Pick at least one person to split with');
-    try {
-      await expensesApi.create({
-        description,
-        amountCents,
-        paidBy,
-        participantIds: [...participants],
-      });
-      setFormError(null);
+    if (amountCents === null) return setActionError('Enter an amount like 45 or 45.50');
+    if (participants.size === 0) return setActionError('Pick at least one person to split with');
+    const ok = await run(() =>
+      expensesApi.create({ description, amountCents, paidBy, participantIds: [...participants] }),
+    );
+    if (ok) {
       setDescription('');
       setAmount('');
-      await reload();
-    } catch (err) {
-      setFormError((err as Error).message);
     }
   }
 
-  async function handleDelete(id: number, label: string) {
-    if (!confirm(`Delete "${label}"?`)) return;
-    try {
-      await expensesApi.remove(id);
-      await reload();
-    } catch (err) {
-      alert((err as Error).message);
-    }
+  function handleDelete(id: number, label: string) {
+    if (confirm(`Delete "${label}"?`)) void run(() => expensesApi.remove(id));
   }
 
   const preview = parseDollars(amount);
@@ -113,8 +101,8 @@ export default function ExpensesPage() {
             About {formatCents(Math.floor(preview / participants.size))} each
           </p>
         )}
-        {formError && <p className="error">{formError}</p>}
-        <button type="submit" className="primary">
+        {actionError && <p className="error">{actionError}</p>}
+        <button type="submit" className="primary" disabled={busy}>
           Add expense
         </button>
       </form>
@@ -150,6 +138,7 @@ export default function ExpensesPage() {
                   className="icon"
                   aria-label="Delete"
                   title="Delete"
+                  disabled={busy}
                   onClick={() => handleDelete(exp.id, exp.description)}
                 >
                   ✕
