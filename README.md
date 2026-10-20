@@ -1,42 +1,73 @@
-# Project 3
+# Bali Trip 🌴
 
-Full-stack TypeScript app: **React + Vite** frontend, **Express** backend, managed as npm workspaces.
+A shared to-do list and expense splitter for a ten-person trip. Everyone logs in, ticks off
+trip prep, logs what they paid for, and sees who owes whom. See [PLAN.md](PLAN.md) for the
+trip, the ten people, and the design decisions.
+
+Stack: **React + Vite** frontend, **Express** backend, **SQLite** (built into Node 22) database,
+all TypeScript, managed as npm workspaces.
 
 ## Getting started
 
+Requires Node 22.5 or newer (for the built-in `node:sqlite`).
+
 ```bash
 npm install
-cp server/.env.example server/.env   # if server/.env doesn't exist
-npm run dev                          # client on :5173, server on :3001
+cp server/.env.example server/.env
+npm run dev                  # client on http://localhost:5173, server on :3001
 ```
 
-The Vite dev server forwards `/api/*` to Express, so the client calls `/api/...` with no CORS setup needed in development.
+On first run the server creates `server/data/trip.db` and seeds the ten accounts:
+`alex, priya, ben, mei, diego, sara, kofi, hana, liam, zoe`, all with the password from
+`SEED_PASSWORD` in `server/.env` (default `bali2026`). To start over, stop the server and
+delete `server/data/`.
+
+You'll see an `ExperimentalWarning: SQLite is an experimental feature` line on startup. It's harmless.
+
+## Features
+
+- **To-dos**: add, assign to anyone, set a due date, tick off; filter by open / mine / all.
+- **Expenses**: who paid, how much, and which of the ten it's split between (equal split;
+  leftover cents go one per person so shares always add up).
+- **Who owes what**: your own balance, everyone's net balance, and the fewest payments
+  needed to settle up. "Mark paid" records a repayment and updates everyone's balance.
 
 ## Scripts (run from root)
 
-| Command             | What it does                          |
-| ------------------- | ------------------------------------- |
-| `npm run dev`       | Run client and server in watch mode   |
-| `npm run build`     | Build both to their `dist/` folders   |
-| `npm start`         | Run the built server                  |
-| `npm run typecheck` | Type-check both workspaces            |
+| Command             | What it does                        |
+| ------------------- | ----------------------------------- |
+| `npm run dev`       | Run client and server in watch mode |
+| `npm run build`     | Build both to their `dist/` folders |
+| `npm start`         | Run the built server                |
+| `npm run typecheck` | Type-check both workspaces          |
 
 ## Structure
 
 ```
 client/src/
-  api/          fetch wrapper + one module per resource
-  components/   reusable UI pieces
-  hooks/        data-fetching / stateful hooks
-  pages/        top-level views
-  types/        shared TS types
+  api/          fetch wrapper + typed endpoint functions
+  components/   PersonSelect
+  hooks/        useLoader (fetch + reload)
+  lib/          money formatting/parsing, trip context (me + users)
+  pages/        Login, Todos, Expenses, Balances
+  types/        models (mirrors the server)
 server/src/
   config/       env loading
-  routes/       URL → controller mapping
-  controllers/  request/response handling, validation
-  services/     business logic and data access
-  middleware/   error handling, 404, etc.
-  types/        shared TS types
+  db/           SQLite schema + first-run seed
+  routes/       auth, todos, expenses, settlements; /users and /balances in index.ts
+  services/     data access + balance / settle-up maths
+  middleware/   requireAuth, input validation, errors
+  types/        models
 ```
 
-To add a resource: create `types/`, `services/`, `controllers/` and `routes/` files on the server, mount the router in `routes/index.ts`, then add a matching `api/` module on the client.
+## API
+
+All routes except `/api/auth/login` and `/api/health` need the session cookie.
+
+```
+POST /api/auth/login  POST /api/auth/logout  GET /api/auth/me  POST /api/auth/password
+GET  /api/users       GET  /api/balances
+GET/POST /api/todos        PATCH/DELETE /api/todos/:id
+GET/POST /api/expenses     DELETE /api/expenses/:id
+GET/POST /api/settlements  DELETE /api/settlements/:id
+```

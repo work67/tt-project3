@@ -1,14 +1,311 @@
 :root {
-  font-family: system-ui, sans-serif;
-  line-height: 1.5;
+  --bg: #f6f7f5;
+  --card: #ffffff;
+  --text: #1d2420;
+  --muted: #6b746f;
+  --border: #e2e5e1;
+  --accent: #0f766e;
+  --accent-soft: #e0f2ef;
+  --pos: #15803d;
+  --neg: #b91c1c;
+  --radius: 10px;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121614;
+    --card: #1b201d;
+    --text: #e7ebe8;
+    --muted: #96a09a;
+    --border: #2c332f;
+    --accent: #2dd4bf;
+    --accent-soft: #163a35;
+    --pos: #4ade80;
+    --neg: #f87171;
+  }
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+h2 {
+  font-size: 1.05rem;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  min-width: 0;
+}
+
+button {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.6;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+}
+button.icon {
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 0.25rem 0.5rem;
+}
+button.icon:hover {
+  color: var(--neg);
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+legend {
+  margin-bottom: 0.4rem;
 }
 
 .container {
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 1rem;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.between {
+  justify-content: space-between;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.wrap > .grow {
+  flex-basis: 14rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 0.85rem;
+}
+.error {
+  color: var(--neg);
+  margin: 0;
+}
+.pos {
+  color: var(--pos);
+}
+.neg {
+  color: var(--neg);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.empty {
+  padding: 0.5rem 0;
+}
+
+/* Login */
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.login form {
+  width: 100%;
+  max-width: 360px;
+}
+.login label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Header + tabs */
+.topbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.topbar .container {
+  padding-bottom: 0.25rem;
+}
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding-top: 0;
+  overflow-x: auto;
+}
+.tabs button {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.segmented button {
+  border: none;
+  border-radius: 0;
+  padding: 0.35rem 0.8rem;
+}
+.segmented button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* To-dos */
+.todo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+}
+.todo input[type='checkbox'] {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--accent);
+}
+.todo.done .todo-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.todo select {
+  max-width: 9rem;
+}
+
+/* Expenses */
+.amount {
+  width: 7rem;
+}
+.expense {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+}
+.chip input {
+  display: none;
+}
+.chip.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Balances */
+.summary {
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 1.25rem;
+}
+.card.mine {
+  border-color: var(--accent);
+}
+.balances li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 560px) {
+  .todo {
+    flex-wrap: wrap;
+  }
+  .todo select {
+    max-width: none;
+  }
 }
