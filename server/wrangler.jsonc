@@ -1,32 +1,39 @@
 // Cloudflare Workers deployment: one Worker serves the API (Express, src/worker.ts)
 // and the built React app (client/dist) as static assets. Data lives in D1.
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "bali-trip",
-  "main": "src/worker.ts",
-  "compatibility_date": "2026-10-01",
-  "compatibility_flags": ["nodejs_compat"],
-
-  "assets": {
-    "directory": "../client/dist",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
-  },
-
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "bali-trip-db",
-      // Replace with the id printed by `npx wrangler d1 create bali-trip-db`
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "migrations"
-    }
-  ],
-
-  // SEED_PASSWORD is a secret: `npx wrangler secret put SEED_PASSWORD`
-  "vars": {
-    "NODE_ENV": "production"
-  },
-
-  "observability": { "enabled": true }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "bali-trip",
+	"main": "src/worker.ts",
+	"compatibility_date": "2026-10-01",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": "../client/dist",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "bali-trip-db",
+			// Replace with the id printed by `npx wrangler d1 create bali-trip-db`
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations"
+		},
+		{
+			"binding": "bali_trip_db",
+			"database_name": "bali-trip-db",
+			"database_id": "f249cc9d-d80b-46fa-8f4f-de611ffc38cb"
+		}
+	],
+	// SEED_PASSWORD is a secret: `npx wrangler secret put SEED_PASSWORD`
+	"vars": {
+		"NODE_ENV": "production"
+	},
+	"observability": {
+		"enabled": true
+	}
 }
