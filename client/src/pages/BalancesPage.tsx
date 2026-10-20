@@ -1,6 +1,7 @@
 import { useCallback, useState, type FormEvent } from 'react';
 import { balancesApi, settlementsApi } from '../api';
 import { useLoader } from '../hooks/useLoader';
+import { useBusy } from '../hooks/useBusy';
 import { useTrip } from '../lib/trip';
 import { formatCents, parseDollars } from '../lib/money';
 import PersonSelect from '../components/PersonSelect';
@@ -15,15 +16,33 @@ export default function BalancesPage() {
   const [toUserId, setToUserId] = useState<number | null>(null);
   const [amount, setAmount] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const { busy, guard } = useBusy();
 
+  /** Returns true if the payment was recorded. */
   async function recordPayment(fromUserId: number, to: number, amountCents: number) {
-    try {
-      await settlementsApi.create(fromUserId, to, amountCents);
-      setFormError(null);
-      await reload();
-    } catch (err) {
-      setFormError((err as Error).message);
-    }
+    const ok = await guard(async () => {
+      try {
+        await settlementsApi.create(fromUserId, to, amountCents);
+        setFormError(null);
+        return true;
+      } catch (err) {
+        setFormError((err as Error).message);
+        return false;
+      } finally {
+        // Reload either way: after a 409 the settle-up list is stale.
+        await reload();
+      }
+    });
+    return ok ?? false;
+  }
+
+  async function handleMarkPaid(fromUserId: number, to: number, amountCents: number) {
+    const question =
+      fromUserId === me.id
+        ? `Record that you paid ${nameOf(to)} ${formatCents(amountCents)}?`
+        : `Record that ${nameOf(fromUserId)} paid you ${formatCents(amountCents)}?`;
+    if (!confirm(question)) return;
+    await recordPayment(fromUserId, to, amountCents);
   }
 
   async function handleManual(e: FormEvent) {
@@ -31,8 +50,7 @@ export default function BalancesPage() {
     const cents = parseDollars(amount);
     if (toUserId === null) return setFormError('Who did you pay?');
     if (cents === null) return setFormError('Enter an amount like 20 or 20.50');
-    await recordPayment(me.id, toUserId, cents);
-    setAmount('');
+    if (await recordPayment(me.id, toUserId, cents)) setAmount('');
   }
 
   if (error) return <p className="error">{error}</p>;
@@ -61,8 +79,11 @@ export default function BalancesPage() {
               </span>
               <strong>{formatCents(t.amountCents)}</strong>
               {involved && (
-                <button onClick={() => recordPayment(t.fromUserId, t.toUserId, t.amountCents)}>
-                  Mark paid
+                <button
+                  disabled={busy}
+                  onClick={() => handleMarkPaid(t.fromUserId, t.toUserId, t.amountCents)}
+                >
+                  {busy ? 'Saving…' : 'Mark paid'}
                 </button>
               )}
             </li>
@@ -96,8 +117,8 @@ export default function BalancesPage() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
-          <button type="submit" className="primary">
-            Record
+          <button type="submit" className="primary" disabled={busy}>
+            {busy ? 'Saving…' : 'Record'}
           </button>
         </div>
         {formError && <p className="error">{formError}</p>}
@@ -111,7 +132,11 @@ export default function BalancesPage() {
             <li key={s.id} className="card row">
               <span className="grow">
                 {nameOf(s.fromUserId)} paid {nameOf(s.toUserId)} {formatCents(s.amountCents)}
-                <span className="muted small"> · {s.createdAt.slice(0, 10)}</span>
+                <span className="muted small">
+                  {' '}
+                  · {s.createdAt.slice(0, 10)} · recorded by{' '}
+                  {s.createdBy === me.id ? 'you' : nameOf(s.createdBy)}
+                </span>
               </span>
               {canDelete && (
                 <button

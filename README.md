@@ -42,6 +42,8 @@ You'll see an `ExperimentalWarning: SQLite is an experimental feature` line on s
   leftover cents go one per person so shares always add up).
 - **Who owes what**: your own balance, everyone's net balance, and the fewest payments
   needed to settle up. "Mark paid" records a repayment and updates everyone's balance.
+  You can only record payments you made or received, and the server refuses (409) a payment
+  bigger than what the payer still owes, so a double-tap or a stale page can't pay twice.
 
 ## Scripts (run from root)
 
