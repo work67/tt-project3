@@ -67,6 +67,7 @@ export default function ExpensesPage() {
           <input
             className="grow"
             placeholder="What was it? (e.g. Surf lesson)"
+            aria-label="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
@@ -103,6 +104,11 @@ export default function ExpensesPage() {
             {users.map((u) => (
               <label key={u.id} className={`chip ${participants.has(u.id) ? 'on' : ''}`}>
                 <input type="checkbox" checked={participants.has(u.id)} onChange={() => toggle(u.id)} />
+                {participants.has(u.id) && (
+                  <span className="chip-check" aria-hidden="true">
+                    ✓
+                  </span>
+                )}
                 {u.displayName}
               </label>
             ))}
