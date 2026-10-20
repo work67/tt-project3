@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "reset-passwords": "tsx src/db/resetPasswords.ts",
-    "reset-db": "tsx src/db/resetDb.ts",
+    "db:reseed": "tsx src/db/resetDb.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -22,7 +22,7 @@ On first run the server creates `server/data/trip.db` and seeds the ten accounts
 `SEED_PASSWORD` in `server/.env` (default `password`), plus starter to-dos and expenses.
 
 The seed only runs when the database is empty, not on every `npm run dev`. To start over
-with fresh seed data, stop the dev server and run `npm run reset-db -w server`
+with fresh seed data, stop the dev server and run `npm run db:reseed`
 (**this deletes all trip data**).
 
 Changed `SEED_PASSWORD` after the database already exists? Run
@@ -46,6 +46,7 @@ You'll see an `ExperimentalWarning: SQLite is an experimental feature` line on s
 | `npm run build`     | Build both to their `dist/` folders |
 | `npm start`         | Run the built server                |
 | `npm run typecheck` | Type-check both workspaces          |
+| `npm run db:reseed` | Wipe the database and reseed it     |
 
 ## Structure
 
