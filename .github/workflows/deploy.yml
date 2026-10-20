@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      reseed:
+        description: 'Reseed database: DELETE all live data and recreate the 10 accounts with the current SEED_PASSWORD'
+        type: boolean
+        default: false
 
 # Never run two deploys at once; a newer push waits for the current one.
 concurrency:
@@ -56,6 +61,16 @@ jobs:
         if: steps.setup.outputs.ready == 'true'
         working-directory: server
         run: npx wrangler d1 migrations apply DB --remote
+
+      # Manual runs only. Wipes before deploying, so the new version (with the new
+      # SEED_PASSWORD) is what seeds the empty database on its first request.
+      - name: Wipe D1 for reseed
+        if: steps.setup.outputs.ready == 'true' && inputs.reseed
+        working-directory: server
+        run: >-
+          npx wrangler d1 execute DB --remote --command
+          "DELETE FROM sessions; DELETE FROM settlements; DELETE FROM expense_shares;
+          DELETE FROM expenses; DELETE FROM todos; DELETE FROM users;"
 
       # SEED_PASSWORD (optional GitHub secret) is uploaded with this version, so a fresh
       # database is never seeded before the password exists. Omitted = keep the existing one.

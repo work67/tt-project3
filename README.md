@@ -98,9 +98,9 @@ Notes:
   from `server/.dev.vars` (gitignored), e.g. `SEED_PASSWORD=password`.
 - Schema changes: add a new numbered file to `server/migrations/`. Local SQLite applies it on
   the next start; `npm run deploy` applies it to D1.
-- To wipe the deployed data and reseed:
-  `npx wrangler d1 execute bali-trip-db --remote --command "DELETE FROM sessions; DELETE FROM settlements; DELETE FROM expense_shares; DELETE FROM expenses; DELETE FROM todos; DELETE FROM users;"`
-  (the next request reseeds).
+- To wipe the deployed data and reseed (e.g. after changing `SEED_PASSWORD`): GitHub →
+  **Actions → Deploy to Cloudflare → Run workflow**, tick **Reseed database**. This deletes
+  all live data; the first request after the deploy recreates the ten accounts.
 - Logins hash passwords with scrypt, which takes a few tens of ms of CPU. The Workers Free
   plan allows 10 ms per request but tolerates occasional spikes; if logins start failing with
   "exceeded CPU", move to Workers Paid.
