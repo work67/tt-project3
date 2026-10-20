@@ -14,9 +14,24 @@ export function useLoader<T>(load: () => Promise<T>) {
     }
   }, [load]);
 
+  // Initial load. Mirrors `reload`, but sets state only from the promise callbacks and
+  // ignores a result that arrives after `load` changed or the component unmounted.
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    let current = true;
+    load().then(
+      (result) => {
+        if (!current) return;
+        setData(result);
+        setError(null);
+      },
+      (err: unknown) => {
+        if (current) setError((err as Error).message);
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [load]);
 
   return { data, error, reload };
 }

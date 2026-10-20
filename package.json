@@ -12,9 +12,19 @@
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
     "db:reseed": "npm run db:reseed -w server",
     "cf:dev": "npm run build -w client && npm run cf:dev -w server",
-    "deploy": "npm run build -w client && npm run cf:deploy -w server"
+    "deploy": "npm run build -w client && npm run cf:deploy -w server",
+    "lint": "eslint ."
   },
   "devDependencies": {
-    "concurrently": "^10.0.6"
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.6",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "typescript": "~6.0",
+    "typescript-eslint": "^8.72.0"
+  },
+  "engines": {
+    "node": ">=22.13"
   }
 }

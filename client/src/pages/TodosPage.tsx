@@ -42,7 +42,7 @@ export default function TodosPage() {
 
   return (
     <section className="stack">
-      <form className="card row wrap" onSubmit={handleAdd}>
+      <form className="card row wrap" onSubmit={(e) => void handleAdd(e)}>
         <input
           className="grow"
           placeholder="Add a to-do…"
@@ -94,7 +94,7 @@ export default function TodosPage() {
               type="checkbox"
               aria-label={`Mark "${todo.title}" done`}
               checked={todo.done}
-              onChange={() => run(() => todosApi.update(todo.id, { done: !todo.done }))}
+              onChange={() => void run(() => todosApi.update(todo.id, { done: !todo.done }))}
             />
             <div className="grow">
               <div className="todo-title">{todo.title}</div>
@@ -105,7 +105,7 @@ export default function TodosPage() {
             </div>
             <PersonSelect
               value={todo.assigneeId}
-              onChange={(id) => run(() => todosApi.update(todo.id, { assigneeId: id }))}
+              onChange={(id) => void run(() => todosApi.update(todo.id, { assigneeId: id }))}
               emptyLabel="Unassigned"
               ariaLabel="Assignee"
             />
