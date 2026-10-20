@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { todosApi } from '../api';
+import { useAction } from '../hooks/useAction';
 import { useLoader } from '../hooks/useLoader';
 import { useTrip } from '../lib/trip';
 import PersonSelect from '../components/PersonSelect';
@@ -14,23 +15,14 @@ export default function TodosPage() {
   const [title, setTitle] = useState('');
   const [assigneeId, setAssigneeId] = useState<number | null>(null);
   const [dueDate, setDueDate] = useState('');
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  async function run(action: () => Promise<unknown>) {
-    try {
-      setActionError(null);
-      await action();
-      await reload();
-    } catch (err) {
-      setActionError((err as Error).message);
-    }
-  }
+  const { run, busy, error: actionError } = useAction(reload);
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
-    await run(() => todosApi.create({ title, assigneeId, dueDate: dueDate || null }));
-    setTitle('');
-    setDueDate('');
+    if (await run(() => todosApi.create({ title, assigneeId, dueDate: dueDate || null }))) {
+      setTitle('');
+      setDueDate('');
+    }
   }
 
   const visible = (todos ?? []).filter((t: Todo) => {
@@ -62,7 +54,7 @@ export default function TodosPage() {
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
         />
-        <button type="submit" className="primary">
+        <button type="submit" className="primary" disabled={busy}>
           Add
         </button>
       </form>

@@ -1,5 +1,6 @@
 import { useCallback, useState, type FormEvent } from 'react';
 import { balancesApi, settlementsApi } from '../api';
+import { useAction } from '../hooks/useAction';
 import { useLoader } from '../hooks/useLoader';
 import { useTrip } from '../lib/trip';
 import { formatCents, parseDollars } from '../lib/money';
@@ -14,25 +15,18 @@ export default function BalancesPage() {
   const { data, error, reload } = useLoader(load);
   const [toUserId, setToUserId] = useState<number | null>(null);
   const [amount, setAmount] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
+  const { run, busy, error: actionError, setError: setActionError } = useAction(reload);
 
-  async function recordPayment(fromUserId: number, to: number, amountCents: number) {
-    try {
-      await settlementsApi.create(fromUserId, to, amountCents);
-      setFormError(null);
-      await reload();
-    } catch (err) {
-      setFormError((err as Error).message);
-    }
+  function recordPayment(fromUserId: number, to: number, amountCents: number) {
+    return run(() => settlementsApi.create(fromUserId, to, amountCents));
   }
 
   async function handleManual(e: FormEvent) {
     e.preventDefault();
     const cents = parseDollars(amount);
-    if (toUserId === null) return setFormError('Who did you pay?');
-    if (cents === null) return setFormError('Enter an amount like 20 or 20.50');
-    await recordPayment(me.id, toUserId, cents);
-    setAmount('');
+    if (toUserId === null) return setActionError('Who did you pay?');
+    if (cents === null) return setActionError('Enter an amount like 20 or 20.50');
+    if (await recordPayment(me.id, toUserId, cents)) setAmount('');
   }
 
   if (error) return <p className="error">{error}</p>;
@@ -50,6 +44,8 @@ export default function BalancesPage() {
         {myNet === 0 && <>You're all square 🎉</>}
       </div>
 
+      {actionError && <p className="error">{actionError}</p>}
+
       <h2>Settle up</h2>
       <ul className="list">
         {balances.transfers.map((t) => {
@@ -61,7 +57,10 @@ export default function BalancesPage() {
               </span>
               <strong>{formatCents(t.amountCents)}</strong>
               {involved && (
-                <button onClick={() => recordPayment(t.fromUserId, t.toUserId, t.amountCents)}>
+                <button
+                  disabled={busy}
+                  onClick={() => recordPayment(t.fromUserId, t.toUserId, t.amountCents)}
+                >
                   Mark paid
                 </button>
               )}
@@ -96,11 +95,10 @@ export default function BalancesPage() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
-          <button type="submit" className="primary">
+          <button type="submit" className="primary" disabled={busy}>
             Record
           </button>
         </div>
-        {formError && <p className="error">{formError}</p>}
       </form>
 
       <h2>Payment history</h2>
@@ -118,10 +116,9 @@ export default function BalancesPage() {
                   className="icon"
                   aria-label="Undo payment"
                   title="Undo"
-                  onClick={async () => {
-                    if (!confirm('Undo this payment?')) return;
-                    await settlementsApi.remove(s.id);
-                    await reload();
+                  disabled={busy}
+                  onClick={() => {
+                    if (confirm('Undo this payment?')) void run(() => settlementsApi.remove(s.id));
                   }}
                 >
                   ✕

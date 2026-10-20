@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { authApi, usersApi } from './api';
+import { onUnauthorized } from './api/client';
+import { useAction } from './hooks/useAction';
 import { TripContext } from './lib/trip';
 import LoginPage from './pages/LoginPage';
 import TodosPage from './pages/TodosPage';
@@ -19,10 +21,18 @@ export default function App() {
   const [me, setMe] = useState<User | null | undefined>(undefined); // undefined = still checking
   const [users, setUsers] = useState<User[]>([]);
   const [tab, setTab] = useState<TabId>('todos');
+  const logoutAction = useAction();
+
+  const signedOut = useCallback(() => {
+    setMe(null);
+    setTab('todos');
+  }, []);
 
   useEffect(() => {
-    authApi.me().then(setMe, () => setMe(null));
-  }, []);
+    onUnauthorized(signedOut);
+    authApi.me().then(setMe, signedOut);
+    return () => onUnauthorized(null);
+  }, [signedOut]);
 
   useEffect(() => {
     if (me) usersApi.list().then(setUsers, () => setUsers([]));
@@ -39,9 +49,7 @@ export default function App() {
   if (!trip || users.length === 0) return <p className="container muted">Loading…</p>;
 
   async function logout() {
-    await authApi.logout();
-    setMe(null);
-    setTab('todos');
+    if (await logoutAction.run(authApi.logout)) signedOut();
   }
 
   const { Page } = TABS.find((t) => t.id === tab)!;
@@ -53,7 +61,8 @@ export default function App() {
           <strong>Bali Trip 🌴</strong>
           <span className="row">
             <span className="muted">Hi, {me.displayName}</span>
-            <button className="link" onClick={logout}>
+            {logoutAction.error && <span className="error small">{logoutAction.error}</span>}
+            <button className="link" onClick={logout} disabled={logoutAction.busy}>
               Log out
             </button>
           </span>
