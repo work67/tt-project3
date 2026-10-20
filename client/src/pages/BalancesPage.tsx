@@ -26,6 +26,17 @@ export default function BalancesPage() {
     }
   }
 
+  async function undoPayment(id: number) {
+    if (!confirm('Undo this payment?')) return;
+    try {
+      await settlementsApi.remove(id);
+      setFormError(null);
+      await reload();
+    } catch (err) {
+      setFormError((err as Error).message);
+    }
+  }
+
   async function handleManual(e: FormEvent) {
     e.preventDefault();
     const cents = parseDollars(amount);
@@ -61,7 +72,7 @@ export default function BalancesPage() {
               </span>
               <strong>{formatCents(t.amountCents)}</strong>
               {involved && (
-                <button onClick={() => recordPayment(t.fromUserId, t.toUserId, t.amountCents)}>
+                <button onClick={() => void recordPayment(t.fromUserId, t.toUserId, t.amountCents)}>
                   Mark paid
                 </button>
               )}
@@ -84,7 +95,7 @@ export default function BalancesPage() {
         ))}
       </ul>
 
-      <form className="card stack" onSubmit={handleManual}>
+      <form className="card stack" onSubmit={(e) => void handleManual(e)}>
         <h2>Record a payment you made</h2>
         <div className="row wrap">
           <PersonSelect value={toUserId} onChange={setToUserId} emptyLabel="Paid to…" ariaLabel="Paid to" />
@@ -118,11 +129,7 @@ export default function BalancesPage() {
                   className="icon"
                   aria-label="Undo payment"
                   title="Undo"
-                  onClick={async () => {
-                    if (!confirm('Undo this payment?')) return;
-                    await settlementsApi.remove(s.id);
-                    await reload();
-                  }}
+                  onClick={() => void undoPayment(s.id)}
                 >
                   ✕
                 </button>

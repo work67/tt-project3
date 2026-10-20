@@ -61,7 +61,7 @@ export default function ExpensesPage() {
 
   return (
     <section className="stack">
-      <form className="card stack" onSubmit={handleAdd}>
+      <form className="card stack" onSubmit={(e) => void handleAdd(e)}>
         <h2>Add an expense</h2>
         <div className="row wrap">
           <input
@@ -150,7 +150,7 @@ export default function ExpensesPage() {
                   className="icon"
                   aria-label="Delete"
                   title="Delete"
-                  onClick={() => handleDelete(exp.id, exp.description)}
+                  onClick={() => void handleDelete(exp.id, exp.description)}
                 >
                   ✕
                 </button>

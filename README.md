@@ -17,7 +17,8 @@ interface (`server/src/db/`). The schema lives in `server/migrations/` and is us
 
 ## Getting started
 
-Requires Node 22.5 or newer (for the built-in `node:sqlite`).
+Requires Node 22.13 or newer (for the built-in `node:sqlite` without a flag, and for Vite).
+[.nvmrc](.nvmrc) pins the major version, so `nvm use` picks it up.
 
 ```bash
 npm install
@@ -32,6 +33,9 @@ On first run the server creates `server/data/trip.db` and seeds the ten accounts
 The seed only runs when the database is empty, not on every `npm run dev`. To start over
 with fresh seed data, or to apply a changed `SEED_PASSWORD`, stop the dev server and run
 `npm run db:reseed` (**this deletes all trip data**).
+
+With npm 11, `npm install` warns that install scripts for `esbuild` and `workerd` were not
+run. That's expected; to approve them, run `npm install-scripts approve esbuild workerd`.
 
 You'll see an `ExperimentalWarning: SQLite is an experimental feature` line on startup. It's harmless.
 
@@ -51,6 +55,7 @@ You'll see an `ExperimentalWarning: SQLite is an experimental feature` line on s
 | `npm run build`     | Build both to their `dist/` folders |
 | `npm start`         | Run the built server                |
 | `npm run typecheck` | Type-check both workspaces          |
+| `npm run lint`      | Lint both workspaces with ESLint    |
 | `npm run db:reseed` | Wipe the local database and reseed  |
 | `npm run cf:dev`    | Run the Cloudflare build locally (Workers runtime + local D1) on :8787 |
 | `npm run deploy`    | Build, apply D1 migrations, deploy to Cloudflare |
@@ -74,7 +79,7 @@ seeds the ten accounts, to-dos and expenses into D1. Later deploys: just `npm ru
 ### Deploying with GitHub Actions
 
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml) deploys on every push to `main`
-(or manually from the Actions tab): typecheck → build client → apply D1 migrations → deploy.
+(or manually from the Actions tab): typecheck → lint → build client → apply D1 migrations → deploy.
 Until it's set up, it skips the deploy with a warning instead of failing.
 
 One-time setup:

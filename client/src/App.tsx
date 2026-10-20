@@ -39,7 +39,11 @@ export default function App() {
   if (!trip || users.length === 0) return <p className="container muted">Loading…</p>;
 
   async function logout() {
-    await authApi.logout();
+    try {
+      await authApi.logout();
+    } catch {
+      // Sign out locally even if the request failed (e.g. the session already expired).
+    }
     setMe(null);
     setTab('todos');
   }
@@ -53,7 +57,7 @@ export default function App() {
           <strong>Bali Trip 🌴</strong>
           <span className="row">
             <span className="muted">Hi, {me.displayName}</span>
-            <button className="link" onClick={logout}>
+            <button className="link" onClick={() => void logout()}>
               Log out
             </button>
           </span>

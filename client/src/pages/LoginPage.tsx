@@ -23,7 +23,7 @@ export default function LoginPage({ onLogin }: { onLogin: (user: User) => void }
 
   return (
     <main className="login">
-      <form className="card stack" onSubmit={handleSubmit}>
+      <form className="card stack" onSubmit={(e) => void handleSubmit(e)}>
         <h1>Bali Trip 🌴</h1>
         <p className="muted">Shared to-dos and who owes what, for the ten of us.</p>
         <label>
