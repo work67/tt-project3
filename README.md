@@ -19,8 +19,11 @@ npm run dev                  # client on http://localhost:5173, server on :3001
 
 On first run the server creates `server/data/trip.db` and seeds the ten accounts:
 `alex, priya, ben, mei, diego, sara, kofi, hana, liam, zoe`, all with the password from
-`SEED_PASSWORD` in `server/.env` (default `bali2026`). To start over, stop the server and
+`SEED_PASSWORD` in `server/.env` (default `password`). To start over, stop the server and
 delete `server/data/`.
+
+Changed `SEED_PASSWORD` after the database already exists? Run
+`npm run reset-passwords -w server` to apply it to all ten accounts (this also logs everyone out).
 
 You'll see an `ExperimentalWarning: SQLite is an experimental feature` line on startup. It's harmless.
 
