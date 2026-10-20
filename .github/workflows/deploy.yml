@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # The account id isn't sensitive, so it may be an Actions secret or variable.
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
       SEED_PASSWORD: ${{ secrets.SEED_PASSWORD }}
       WRANGLER_SEND_METRICS: 'false'
 

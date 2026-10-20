@@ -86,6 +86,7 @@ One-time setup:
 3. In GitHub → *Settings → Secrets and variables → Actions*, add:
    - `CLOUDFLARE_API_TOKEN`: the token from step 2
    - `CLOUDFLARE_ACCOUNT_ID`: shown on the Cloudflare dashboard's Workers & Pages page
+     (a secret or a variable both work)
    - `SEED_PASSWORD`: the ten accounts' starting password (uploaded with each deploy)
 4. Push to `main`, or run the workflow from the Actions tab.
 

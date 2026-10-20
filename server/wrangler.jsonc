@@ -19,14 +19,8 @@
 		{
 			"binding": "DB",
 			"database_name": "bali-trip-db",
-			// Replace with the id printed by `npx wrangler d1 create bali-trip-db`
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "f249cc9d-d80b-46fa-8f4f-de611ffc38cb",
 			"migrations_dir": "migrations"
-		},
-		{
-			"binding": "bali_trip_db",
-			"database_name": "bali-trip-db",
-			"database_id": "f249cc9d-d80b-46fa-8f4f-de611ffc38cb"
 		}
 	],
 	// SEED_PASSWORD is a secret: `npx wrangler secret put SEED_PASSWORD`
