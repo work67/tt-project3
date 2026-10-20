@@ -10,7 +10,9 @@
     "build": "npm run build -w server && npm run build -w client",
     "start": "npm run start -w server",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
-    "db:reseed": "npm run db:reseed -w server"
+    "db:reseed": "npm run db:reseed -w server",
+    "cf:dev": "npm run build -w client && npm run cf:dev -w server",
+    "deploy": "npm run build -w client && npm run cf:deploy -w server"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

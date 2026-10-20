@@ -2,29 +2,31 @@ import { db } from '../db/index.js';
 import type { Balances } from '../types/models.js';
 import { listUsers } from './users.service.js';
 
+type Total = { userId: number; cents: number };
+
 /**
  * Net balance per person = paid for others - owed to others + repaid - received.
  * Positive means the group owes them money.
  */
-export function computeBalances(): Balances {
-  const net = new Map(listUsers().map((u) => [u.id, 0]));
+export async function computeBalances(): Promise<Balances> {
+  const [users, paid, owed, settlements] = await Promise.all([
+    listUsers(),
+    db().all<Total>(
+      'SELECT paid_by AS userId, SUM(amount_cents) AS cents FROM expenses GROUP BY paid_by',
+    ),
+    db().all<Total>(
+      'SELECT user_id AS userId, SUM(share_cents) AS cents FROM expense_shares GROUP BY user_id',
+    ),
+    db().all<{ fromId: number; toId: number; cents: number }>(
+      'SELECT from_user_id AS fromId, to_user_id AS toId, amount_cents AS cents FROM settlements',
+    ),
+  ]);
+
+  const net = new Map(users.map((u) => [u.id, 0]));
   const add = (userId: number, cents: number) => net.set(userId, (net.get(userId) ?? 0) + cents);
 
-  const paid = db
-    .prepare('SELECT paid_by AS userId, SUM(amount_cents) AS cents FROM expenses GROUP BY paid_by')
-    .all() as { userId: number; cents: number }[];
   for (const { userId, cents } of paid) add(userId, cents);
-
-  const owed = db
-    .prepare(
-      'SELECT user_id AS userId, SUM(share_cents) AS cents FROM expense_shares GROUP BY user_id',
-    )
-    .all() as { userId: number; cents: number }[];
   for (const { userId, cents } of owed) add(userId, -cents);
-
-  const settlements = db
-    .prepare('SELECT from_user_id AS fromId, to_user_id AS toId, amount_cents AS cents FROM settlements')
-    .all() as { fromId: number; toId: number; cents: number }[];
   for (const { fromId, toId, cents } of settlements) {
     add(fromId, cents);
     add(toId, -cents);

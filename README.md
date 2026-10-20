@@ -4,8 +4,16 @@ A shared to-do list and expense splitter for a ten-person trip. Everyone logs in
 trip prep, logs what they paid for, and sees who owes whom. See [PLAN.md](PLAN.md) for the
 trip, the ten people, and the design decisions.
 
-Stack: **React + Vite** frontend, **Express** backend, **SQLite** (built into Node 22) database,
-all TypeScript, managed as npm workspaces.
+Stack: **React + Vite** frontend, **Express** backend, all TypeScript, managed as npm workspaces.
+The database is SQLite in both places it runs:
+
+|              | Runs on                            | Database                                  |
+| ------------ | ---------------------------------- | ----------------------------------------- |
+| Local        | Node (`server/src/index.ts`)       | SQLite file via `node:sqlite`             |
+| Cloudflare   | Workers (`server/src/worker.ts`)   | D1 (Cloudflare's hosted SQLite)           |
+
+Both entry points run the same Express app and services, through a small async database
+interface (`server/src/db/`). The schema lives in `server/migrations/` and is used by both.
 
 ## Getting started
 
@@ -43,7 +51,40 @@ You'll see an `ExperimentalWarning: SQLite is an experimental feature` line on s
 | `npm run build`     | Build both to their `dist/` folders |
 | `npm start`         | Run the built server                |
 | `npm run typecheck` | Type-check both workspaces          |
-| `npm run db:reseed` | Wipe the database and reseed it     |
+| `npm run db:reseed` | Wipe the local database and reseed  |
+| `npm run cf:dev`    | Run the Cloudflare build locally (Workers runtime + local D1) on :8787 |
+| `npm run deploy`    | Build, apply D1 migrations, deploy to Cloudflare |
+
+## Deploying to Cloudflare
+
+One Worker serves both the API and the built React app. One-time setup, from `server/`:
+
+```bash
+cd server
+npx wrangler login
+npx wrangler d1 create bali-trip-db      # copy the database_id it prints into wrangler.jsonc
+npx wrangler secret put SEED_PASSWORD    # the password the ten accounts start with
+cd ..
+npm run deploy                           # builds client, applies migrations, deploys
+```
+
+Wrangler prints the app's URL (`https://bali-trip.<you>.workers.dev`). The first request
+seeds the ten accounts, to-dos and expenses into D1. Later deploys: just `npm run deploy`.
+
+Notes:
+
+- **Set the `SEED_PASSWORD` secret before the first visit.** Without it the code's fallback
+  is used, and that's visible to anyone who can read this repo.
+- To try the Cloudflare build without deploying: `npm run cf:dev`. Its local secrets come
+  from `server/.dev.vars` (gitignored), e.g. `SEED_PASSWORD=password`.
+- Schema changes: add a new numbered file to `server/migrations/`. Local SQLite applies it on
+  the next start; `npm run deploy` applies it to D1.
+- To wipe the deployed data and reseed:
+  `npx wrangler d1 execute bali-trip-db --remote --command "DELETE FROM sessions; DELETE FROM settlements; DELETE FROM expense_shares; DELETE FROM expenses; DELETE FROM todos; DELETE FROM users;"`
+  (the next request reseeds).
+- Logins hash passwords with scrypt, which takes a few tens of ms of CPU. The Workers Free
+  plan allows 10 ms per request but tolerates occasional spikes; if logins start failing with
+  "exceeded CPU", move to Workers Paid.
 
 ## Structure
 
@@ -55,9 +96,14 @@ client/src/
   lib/          money formatting/parsing, trip context (me + users)
   pages/        Login, Todos, Expenses, Balances
   types/        models (mirrors the server)
+server/
+  migrations/   SQL schema (shared by local SQLite and D1)
+  wrangler.jsonc  Cloudflare Worker + D1 + static assets config
 server/src/
+  index.ts      local entry (Node + SQLite)
+  worker.ts     Cloudflare entry (Workers + D1)
   config/       env loading
-  db/           SQLite schema + first-run seed
+  db/           database interface, SQLite + D1 adapters, first-run seed
   routes/       auth, todos, expenses, settlements; /users and /balances in index.ts
   services/     data access + balance / settle-up maths
   middleware/   requireAuth, input validation, errors

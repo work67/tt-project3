@@ -1,9 +1,12 @@
-import 'dotenv/config';
+// Locally, src/index.ts loads server/.env first. On Cloudflare, process.env holds the
+// Worker's vars and secrets (wrangler.jsonc `vars`, `wrangler secret put`).
+const nodeEnv = process.env.NODE_ENV ?? 'development';
 
 export const env = {
   port: Number(process.env.PORT ?? 3001),
-  nodeEnv: process.env.NODE_ENV ?? 'development',
+  nodeEnv,
   clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
   dbFile: process.env.DB_FILE ?? 'data/trip.db',
-  seedPassword: process.env.SEED_PASSWORD ?? 'password',
+  // Fallbacks are public in the repo: set a real SEED_PASSWORD secret before deploying.
+  seedPassword: process.env.SEED_PASSWORD ?? (nodeEnv === 'production' ? 'P@ssw0rd!@#' : 'password'),
 };

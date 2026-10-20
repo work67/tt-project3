@@ -4,9 +4,9 @@ import { HttpError } from './errorHandler.js';
 
 export const SESSION_COOKIE = 'sid';
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const token = req.cookies?.[SESSION_COOKIE];
-  const user = token ? userForSession(token) : null;
+  const user = token ? await userForSession(token) : null;
   if (!user) throw new HttpError(401, 'Not logged in');
   req.user = user;
   next();

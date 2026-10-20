@@ -6,28 +6,30 @@ const SELECT = `
          created_by AS createdBy, created_at AS createdAt
   FROM settlements`;
 
-export function listSettlements(): Settlement[] {
-  return db.prepare(`${SELECT} ORDER BY created_at DESC, id DESC`).all() as unknown as Settlement[];
+export function listSettlements(): Promise<Settlement[]> {
+  return db().all<Settlement>(`${SELECT} ORDER BY created_at DESC, id DESC`);
 }
 
-export function getSettlement(id: number): Settlement | undefined {
-  return db.prepare(`${SELECT} WHERE id = ?`).get(id) as Settlement | undefined;
+export function getSettlement(id: number): Promise<Settlement | undefined> {
+  return db().get<Settlement>(`${SELECT} WHERE id = ?`, id);
 }
 
-export function createSettlement(
+export async function createSettlement(
   fromUserId: number,
   toUserId: number,
   amountCents: number,
   createdBy: number,
-): Settlement {
-  const { lastInsertRowid } = db
-    .prepare(
-      'INSERT INTO settlements (from_user_id, to_user_id, amount_cents, created_by) VALUES (?, ?, ?, ?)',
-    )
-    .run(fromUserId, toUserId, amountCents, createdBy);
-  return getSettlement(Number(lastInsertRowid))!;
+): Promise<Settlement> {
+  const { lastRowId } = await db().run(
+    'INSERT INTO settlements (from_user_id, to_user_id, amount_cents, created_by) VALUES (?, ?, ?, ?)',
+    fromUserId,
+    toUserId,
+    amountCents,
+    createdBy,
+  );
+  return (await getSettlement(lastRowId))!;
 }
 
-export function deleteSettlement(id: number) {
-  db.prepare('DELETE FROM settlements WHERE id = ?').run(id);
+export async function deleteSettlement(id: number) {
+  await db().run('DELETE FROM settlements WHERE id = ?', id);
 }

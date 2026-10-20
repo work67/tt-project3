@@ -19,12 +19,12 @@ export function requireCents(value: unknown, field: string): number {
   return value as number;
 }
 
-export function requireUserId(value: unknown, field: string): number {
-  if (!userExists(value)) throw new HttpError(400, `"${field}" is not a trip member`);
-  return value;
+export async function requireUserId(value: unknown, field: string): Promise<number> {
+  if (!(await userExists(value))) throw new HttpError(400, `"${field}" is not a trip member`);
+  return value as number;
 }
 
-export function optionalUserId(value: unknown, field: string): number | null {
+export async function optionalUserId(value: unknown, field: string): Promise<number | null> {
   return value === null || value === undefined ? null : requireUserId(value, field);
 }
 

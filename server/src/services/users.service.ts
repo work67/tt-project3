@@ -1,13 +1,11 @@
 import { db } from '../db/index.js';
 import type { User } from '../types/models.js';
 
-export function listUsers(): User[] {
-  return db
-    .prepare('SELECT id, username, display_name AS displayName FROM users ORDER BY id')
-    .all() as unknown as User[];
+export function listUsers(): Promise<User[]> {
+  return db().all<User>('SELECT id, username, display_name AS displayName FROM users ORDER BY id');
 }
 
-export function userExists(id: unknown): id is number {
+export async function userExists(id: unknown): Promise<boolean> {
   if (!Number.isInteger(id)) return false;
-  return db.prepare('SELECT 1 FROM users WHERE id = ?').get(id as number) !== undefined;
+  return (await db().get('SELECT 1 AS found FROM users WHERE id = ?', id as number)) !== undefined;
 }

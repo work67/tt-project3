@@ -8,7 +8,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:reseed": "tsx src/db/resetDb.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cf:dev": "wrangler d1 migrations apply DB --local && wrangler dev",
+    "cf:migrate": "wrangler d1 migrations apply DB --remote",
+    "cf:deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
@@ -22,6 +25,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.5",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "wrangler": "^4.151.2"
   }
 }

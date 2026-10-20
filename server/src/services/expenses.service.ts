@@ -1,23 +1,21 @@
-import { db, transaction } from '../db/index.js';
+import { db, type Statement } from '../db/index.js';
 import type { Expense } from '../types/models.js';
 
 type ExpenseRow = Omit<Expense, 'shares'>;
 type ShareRow = { expenseId: number; userId: number; shareCents: number };
 
-export function listExpenses(): Expense[] {
-  const rows = db
-    .prepare(
+export async function listExpenses(): Promise<Expense[]> {
+  const [rows, shares] = await Promise.all([
+    db().all<ExpenseRow>(
       `SELECT id, description, amount_cents AS amountCents, paid_by AS paidBy,
               created_by AS createdBy, created_at AS createdAt
        FROM expenses ORDER BY created_at DESC, id DESC`,
-    )
-    .all() as unknown as ExpenseRow[];
-  const shares = db
-    .prepare(
+    ),
+    db().all<ShareRow>(
       `SELECT expense_id AS expenseId, user_id AS userId, share_cents AS shareCents
        FROM expense_shares ORDER BY user_id`,
-    )
-    .all() as unknown as ShareRow[];
+    ),
+  ]);
 
   return rows.map((row) => ({
     ...row,
@@ -45,30 +43,36 @@ export interface ExpenseInput {
   participantIds: number[];
 }
 
-export function createExpense(input: ExpenseInput, createdBy: number): Expense {
-  const id = transaction(() => {
-    const { lastInsertRowid } = db
-      .prepare(
-        'INSERT INTO expenses (description, amount_cents, paid_by, created_by) VALUES (?, ?, ?, ?)',
-      )
-      .run(input.description, input.amountCents, input.paidBy, createdBy);
-    const insertShare = db.prepare(
-      'INSERT INTO expense_shares (expense_id, user_id, share_cents) VALUES (?, ?, ?)',
-    );
-    for (const share of splitEvenly(input.amountCents, input.participantIds)) {
-      insertShare.run(lastInsertRowid, share.userId, share.shareCents);
-    }
-    return Number(lastInsertRowid);
-  });
-  return listExpenses().find((e) => e.id === id)!;
+export async function createExpense(input: ExpenseInput, createdBy: number): Promise<Expense> {
+  // D1 has no interactive transactions, so insert the expense and its shares in one
+  // atomic batch. A batch runs serially, so MAX(id) is the expense just inserted.
+  const statements: Statement[] = [
+    {
+      sql: 'INSERT INTO expenses (description, amount_cents, paid_by, created_by) VALUES (?, ?, ?, ?)',
+      params: [input.description, input.amountCents, input.paidBy, createdBy],
+    },
+    ...splitEvenly(input.amountCents, input.participantIds).map((share) => ({
+      sql: `INSERT INTO expense_shares (expense_id, user_id, share_cents)
+            VALUES ((SELECT MAX(id) FROM expenses), ?, ?)`,
+      params: [share.userId, share.shareCents],
+    })),
+  ];
+  await db().batch(statements);
+
+  const created = await db().get<{ id: number }>(
+    'SELECT MAX(id) AS id FROM expenses WHERE created_by = ?',
+    createdBy,
+  );
+  return (await listExpenses()).find((e) => e.id === created!.id)!;
 }
 
-export function getExpenseOwners(id: number): { paidBy: number; createdBy: number } | undefined {
-  return db
-    .prepare('SELECT paid_by AS paidBy, created_by AS createdBy FROM expenses WHERE id = ?')
-    .get(id) as { paidBy: number; createdBy: number } | undefined;
+export function getExpenseOwners(id: number) {
+  return db().get<{ paidBy: number; createdBy: number }>(
+    'SELECT paid_by AS paidBy, created_by AS createdBy FROM expenses WHERE id = ?',
+    id,
+  );
 }
 
-export function deleteExpense(id: number) {
-  db.prepare('DELETE FROM expenses WHERE id = ?').run(id);
+export async function deleteExpense(id: number) {
+  await db().run('DELETE FROM expenses WHERE id = ?', id);
 }

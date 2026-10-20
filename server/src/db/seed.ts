@@ -1,9 +1,9 @@
-import { db, transaction } from './index.js';
+import { db, type Statement } from './index.js';
 import { env } from '../config/env.js';
 import { hashPassword } from '../services/auth.service.js';
 import { splitEvenly } from '../services/expenses.service.js';
 
-// The ten people on the trip (see PLAN.md).
+// The ten people on the trip (see PLAN.md). Their ids are 1–10 in this order.
 const PEOPLE = [
   ['alex', 'Alex'],
   ['priya', 'Priya'],
@@ -17,7 +17,12 @@ const PEOPLE = [
   ['zoe', 'Zoe'],
 ] as const;
 
-const STARTER_TODOS: [title: string, assignee: string][] = [
+type Username = (typeof PEOPLE)[number][0];
+const EVERYONE = PEOPLE.map(([username]) => username);
+const everyoneBut = (...skip: Username[]) => EVERYONE.filter((u) => !skip.includes(u));
+const idOf = (username: Username) => EVERYONE.indexOf(username) + 1;
+
+const STARTER_TODOS: [title: string, assignee: Username][] = [
   ['Pay villa deposit', 'alex'],
   ['Book surf lesson', 'priya'],
   ['Book Nusa Penida snorkeling boat', 'priya'],
@@ -27,10 +32,6 @@ const STARTER_TODOS: [title: string, assignee: string][] = [
   ['Everyone: buy travel insurance', 'sara'],
   ['Share packing list', 'hana'],
 ];
-
-type Username = (typeof PEOPLE)[number][0];
-const EVERYONE = PEOPLE.map(([username]) => username);
-const everyoneBut = (...skip: Username[]) => EVERYONE.filter((u) => !skip.includes(u));
 
 // Liam only joins for the last 3 days, so he skips the early activities.
 const STARTER_EXPENSES: {
@@ -54,46 +55,64 @@ const STARTER_EXPENSES: {
   { description: 'Scooter rental', amountCents: 12000, paidBy: 'ben', splitWith: ['ben', 'diego', 'hana', 'liam'] },
 ];
 
-/** Create the ten accounts, starter to-dos and expenses the first time the server runs. */
-export function seedIfEmpty() {
-  const { count } = db.prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number };
-  if (count > 0) return;
+async function userCount() {
+  const row = await db().get<{ count: number }>('SELECT COUNT(*) AS count FROM users');
+  return row?.count ?? 0;
+}
 
-  transaction(() => {
-    const insertUser = db.prepare(
-      'INSERT INTO users (username, display_name, password_hash) VALUES (?, ?, ?)',
-    );
-    const ids = new Map<string, number>();
-    for (const [username, name] of PEOPLE) {
-      const { lastInsertRowid } = insertUser.run(username, name, hashPassword(env.seedPassword));
-      ids.set(username, Number(lastInsertRowid));
-    }
+/**
+ * Create the ten accounts, starter to-dos and expenses if the database has no users.
+ * Returns true if it seeded.
+ */
+export async function seedIfEmpty(): Promise<boolean> {
+  if ((await userCount()) > 0) return false;
+  if (!env.seedPassword) {
+    throw new Error('SEED_PASSWORD is not set; refusing to create accounts without it');
+  }
 
-    const insertTodo = db.prepare(
-      'INSERT INTO todos (title, assignee_id, created_by) VALUES (?, ?, ?)',
-    );
-    for (const [title, assignee] of STARTER_TODOS) {
-      insertTodo.run(title, ids.get(assignee)!, ids.get('alex')!);
-    }
+  // Everyone starts with the same password, so hash it once (scrypt is CPU-heavy on Workers).
+  const passwordHash = hashPassword(env.seedPassword);
+  const statements: Statement[] = [];
 
-    const insertExpense = db.prepare(
-      'INSERT INTO expenses (description, amount_cents, paid_by, created_by) VALUES (?, ?, ?, ?)',
-    );
-    const insertShare = db.prepare(
-      'INSERT INTO expense_shares (expense_id, user_id, share_cents) VALUES (?, ?, ?)',
-    );
-    for (const { description, amountCents, paidBy, splitWith } of STARTER_EXPENSES) {
-      const payerId = ids.get(paidBy)!;
-      const { lastInsertRowid } = insertExpense.run(description, amountCents, payerId, payerId);
-      const participantIds = splitWith.map((u) => ids.get(u)!);
-      for (const { userId, shareCents } of splitEvenly(amountCents, participantIds)) {
-        insertShare.run(lastInsertRowid, userId, shareCents);
-      }
+  PEOPLE.forEach(([username, name], i) => {
+    statements.push({
+      sql: 'INSERT INTO users (id, username, display_name, password_hash) VALUES (?, ?, ?, ?)',
+      params: [i + 1, username, name, passwordHash],
+    });
+  });
+
+  for (const [title, assignee] of STARTER_TODOS) {
+    statements.push({
+      sql: 'INSERT INTO todos (title, assignee_id, created_by) VALUES (?, ?, ?)',
+      params: [title, idOf(assignee), idOf('alex')],
+    });
+  }
+
+  STARTER_EXPENSES.forEach(({ description, amountCents, paidBy, splitWith }, i) => {
+    const expenseId = i + 1;
+    statements.push({
+      sql: 'INSERT INTO expenses (id, description, amount_cents, paid_by, created_by) VALUES (?, ?, ?, ?, ?)',
+      params: [expenseId, description, amountCents, idOf(paidBy), idOf(paidBy)],
+    });
+    for (const { userId, shareCents } of splitEvenly(amountCents, splitWith.map(idOf))) {
+      statements.push({
+        sql: 'INSERT INTO expense_shares (expense_id, user_id, share_cents) VALUES (?, ?, ?)',
+        params: [expenseId, userId, shareCents],
+      });
     }
   });
 
+  try {
+    await db().batch(statements);
+  } catch (err) {
+    // Two Workers can race to seed a fresh D1 database; the loser's batch rolls back.
+    if ((await userCount()) > 0) return false;
+    throw err;
+  }
+
   console.log(
     `Seeded ${PEOPLE.length} users, ${STARTER_TODOS.length} to-dos and ` +
-      `${STARTER_EXPENSES.length} expenses (password: "${env.seedPassword}")`,
+      `${STARTER_EXPENSES.length} expenses`,
   );
+  return true;
 }

@@ -15,12 +15,12 @@ apiRouter.use('/auth', authRouter);
 
 // Everything below needs a logged-in trip member.
 apiRouter.use(requireAuth);
-apiRouter.get('/users', (_req, res) => {
-  res.json(listUsers());
+apiRouter.get('/users', async (_req, res) => {
+  res.json(await listUsers());
 });
 apiRouter.use('/todos', todosRouter);
 apiRouter.use('/expenses', expensesRouter);
 apiRouter.use('/settlements', settlementsRouter);
-apiRouter.get('/balances', (_req, res) => {
-  res.json(computeBalances());
+apiRouter.get('/balances', async (_req, res) => {
+  res.json(await computeBalances());
 });

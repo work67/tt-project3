@@ -1,4 +1,4 @@
-import { db } from '../db/index.js';
+import { db, type SqlValue } from '../db/index.js';
 import type { Todo } from '../types/models.js';
 
 const SELECT = `
@@ -10,13 +10,13 @@ type TodoRow = Omit<Todo, 'done'> & { done: number };
 
 const toTodo = (row: TodoRow): Todo => ({ ...row, done: row.done === 1 });
 
-export function listTodos(): Todo[] {
-  const rows = db.prepare(`${SELECT} ORDER BY done, due_date IS NULL, due_date, id`).all();
-  return (rows as unknown as TodoRow[]).map(toTodo);
+export async function listTodos(): Promise<Todo[]> {
+  const rows = await db().all<TodoRow>(`${SELECT} ORDER BY done, due_date IS NULL, due_date, id`);
+  return rows.map(toTodo);
 }
 
-export function getTodo(id: number): Todo | undefined {
-  const row = db.prepare(`${SELECT} WHERE id = ?`).get(id) as TodoRow | undefined;
+export async function getTodo(id: number): Promise<Todo | undefined> {
+  const row = await db().get<TodoRow>(`${SELECT} WHERE id = ?`, id);
   return row && toTodo(row);
 }
 
@@ -28,13 +28,16 @@ export interface TodoInput {
   done: boolean;
 }
 
-export function createTodo(input: Omit<TodoInput, 'done'>, createdBy: number): Todo {
-  const { lastInsertRowid } = db
-    .prepare(
-      'INSERT INTO todos (title, notes, assignee_id, due_date, created_by) VALUES (?, ?, ?, ?, ?)',
-    )
-    .run(input.title, input.notes, input.assigneeId, input.dueDate, createdBy);
-  return getTodo(Number(lastInsertRowid))!;
+export async function createTodo(input: Omit<TodoInput, 'done'>, createdBy: number) {
+  const { lastRowId } = await db().run(
+    'INSERT INTO todos (title, notes, assignee_id, due_date, created_by) VALUES (?, ?, ?, ?, ?)',
+    input.title,
+    input.notes,
+    input.assigneeId,
+    input.dueDate,
+    createdBy,
+  );
+  return (await getTodo(lastRowId))!;
 }
 
 const COLUMNS: Record<keyof TodoInput, string> = {
@@ -45,19 +48,19 @@ const COLUMNS: Record<keyof TodoInput, string> = {
   done: 'done',
 };
 
-export function updateTodo(id: number, changes: Partial<TodoInput>): Todo | undefined {
+export async function updateTodo(id: number, changes: Partial<TodoInput>) {
   const keys = Object.keys(changes) as (keyof TodoInput)[];
   if (keys.length > 0) {
     const sets = keys.map((k) => `${COLUMNS[k]} = ?`).join(', ');
-    const values = keys.map((k) => {
+    const values: SqlValue[] = keys.map((k) => {
       const v = changes[k];
       return typeof v === 'boolean' ? Number(v) : (v ?? null);
     });
-    db.prepare(`UPDATE todos SET ${sets} WHERE id = ?`).run(...values, id);
+    await db().run(`UPDATE todos SET ${sets} WHERE id = ?`, ...values, id);
   }
   return getTodo(id);
 }
 
-export function deleteTodo(id: number): boolean {
-  return db.prepare('DELETE FROM todos WHERE id = ?').run(id).changes > 0;
+export async function deleteTodo(id: number): Promise<boolean> {
+  return (await db().run('DELETE FROM todos WHERE id = ?', id)).changes > 0;
 }
