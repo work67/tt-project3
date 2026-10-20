@@ -19,8 +19,11 @@ npm run dev                  # client on http://localhost:5173, server on :3001
 
 On first run the server creates `server/data/trip.db` and seeds the ten accounts:
 `alex, priya, ben, mei, diego, sara, kofi, hana, liam, zoe`, all with the password from
-`SEED_PASSWORD` in `server/.env` (default `password`). To start over, stop the server and
-delete `server/data/`.
+`SEED_PASSWORD` in `server/.env` (default `password`), plus starter to-dos and expenses.
+
+The seed only runs when the database is empty, not on every `npm run dev`. To start over
+with fresh seed data, stop the dev server and run `npm run reset-db -w server`
+(**this deletes all trip data**).
 
 Changed `SEED_PASSWORD` after the database already exists? Run
 `npm run reset-passwords -w server` to apply it to all ten accounts (this also logs everyone out).

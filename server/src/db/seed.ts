@@ -1,6 +1,7 @@
 import { db, transaction } from './index.js';
 import { env } from '../config/env.js';
 import { hashPassword } from '../services/auth.service.js';
+import { splitEvenly } from '../services/expenses.service.js';
 
 // The ten people on the trip (see PLAN.md).
 const PEOPLE = [
@@ -27,7 +28,33 @@ const STARTER_TODOS: [title: string, assignee: string][] = [
   ['Share packing list', 'hana'],
 ];
 
-/** Create the ten accounts and starter to-dos the first time the server runs. */
+type Username = (typeof PEOPLE)[number][0];
+const EVERYONE = PEOPLE.map(([username]) => username);
+const everyoneBut = (...skip: Username[]) => EVERYONE.filter((u) => !skip.includes(u));
+
+// Liam only joins for the last 3 days, so he skips the early activities.
+const STARTER_EXPENSES: {
+  description: string;
+  amountCents: number;
+  paidBy: Username;
+  splitWith: readonly Username[];
+}[] = [
+  { description: 'Villa (5 nights)', amountCents: 240000, paidBy: 'alex', splitWith: EVERYONE },
+  { description: 'Airport pickups', amountCents: 18000, paidBy: 'ben', splitWith: everyoneBut('liam') },
+  { description: 'Groceries for the villa', amountCents: 13640, paidBy: 'mei', splitWith: EVERYONE },
+  { description: 'Welcome dinner', amountCents: 31275, paidBy: 'mei', splitWith: everyoneBut('liam') },
+  { description: 'Surf lesson', amountCents: 40500, paidBy: 'priya', splitWith: everyoneBut('liam') },
+  { description: 'Nusa Penida snorkeling boat', amountCents: 45000, paidBy: 'priya', splitWith: everyoneBut('liam') },
+  {
+    description: 'Mount Batur sunrise hike',
+    amountCents: 35000,
+    paidBy: 'kofi',
+    splitWith: ['alex', 'priya', 'diego', 'sara', 'kofi', 'zoe', 'liam'],
+  },
+  { description: 'Scooter rental', amountCents: 12000, paidBy: 'ben', splitWith: ['ben', 'diego', 'hana', 'liam'] },
+];
+
+/** Create the ten accounts, starter to-dos and expenses the first time the server runs. */
 export function seedIfEmpty() {
   const { count } = db.prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number };
   if (count > 0) return;
@@ -48,7 +75,25 @@ export function seedIfEmpty() {
     for (const [title, assignee] of STARTER_TODOS) {
       insertTodo.run(title, ids.get(assignee)!, ids.get('alex')!);
     }
+
+    const insertExpense = db.prepare(
+      'INSERT INTO expenses (description, amount_cents, paid_by, created_by) VALUES (?, ?, ?, ?)',
+    );
+    const insertShare = db.prepare(
+      'INSERT INTO expense_shares (expense_id, user_id, share_cents) VALUES (?, ?, ?)',
+    );
+    for (const { description, amountCents, paidBy, splitWith } of STARTER_EXPENSES) {
+      const payerId = ids.get(paidBy)!;
+      const { lastInsertRowid } = insertExpense.run(description, amountCents, payerId, payerId);
+      const participantIds = splitWith.map((u) => ids.get(u)!);
+      for (const { userId, shareCents } of splitEvenly(amountCents, participantIds)) {
+        insertShare.run(lastInsertRowid, userId, shareCents);
+      }
+    }
   });
 
-  console.log(`Seeded ${PEOPLE.length} users (password: "${env.seedPassword}")`);
+  console.log(
+    `Seeded ${PEOPLE.length} users, ${STARTER_TODOS.length} to-dos and ` +
+      `${STARTER_EXPENSES.length} expenses (password: "${env.seedPassword}")`,
+  );
 }
