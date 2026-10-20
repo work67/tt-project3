@@ -71,6 +71,24 @@ npm run deploy                           # builds client, applies migrations, de
 Wrangler prints the app's URL (`https://bali-trip.<you>.workers.dev`). The first request
 seeds the ten accounts, to-dos and expenses into D1. Later deploys: just `npm run deploy`.
 
+### Deploying with GitHub Actions
+
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml) deploys on every push to `main`
+(or manually from the Actions tab): typecheck → build client → apply D1 migrations → deploy.
+Until it's set up, it skips the deploy with a warning instead of failing.
+
+One-time setup:
+
+1. Create the D1 database (`npx wrangler d1 create bali-trip-db` from `server/`), put its
+   `database_id` in `server/wrangler.jsonc`, and commit that. The id isn't secret.
+2. In Cloudflare → *My Profile → API Tokens*, create a token from the **Edit Cloudflare
+   Workers** template and add **Account → D1 → Edit** to it.
+3. In GitHub → *Settings → Secrets and variables → Actions*, add:
+   - `CLOUDFLARE_API_TOKEN`: the token from step 2
+   - `CLOUDFLARE_ACCOUNT_ID`: shown on the Cloudflare dashboard's Workers & Pages page
+   - `SEED_PASSWORD`: the ten accounts' starting password (uploaded with each deploy)
+4. Push to `main`, or run the workflow from the Actions tab.
+
 Notes:
 
 - **Set the `SEED_PASSWORD` secret before the first visit.** Without it the code's fallback
